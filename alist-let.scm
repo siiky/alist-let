@@ -55,6 +55,7 @@
 
     ((alist-values "result" alist ((key default equal?) ...))
      (let ((%alist alist))
+       ; TODO: How to implement this with better performance?
        (values (alist-ref key %alist equal? default) ...)))
 
     ((alist-values alist key ...)
