@@ -26,10 +26,10 @@
     ((alist-values "add-defaults" tmp-list alist ())
      (alist-values "reverse" tmp-list alist ()))
 
-    ((alist-values "add-defaults" (tmp-list ...) alist ((quote key) keys ...))
-     (alist-values "add-defaults" (tmp-list ...) alist (((quote key)) keys ...)))
-    ((alist-values "add-defaults" (tmp-list ...) alist ((quasiquote key) keys ...))
-     (alist-values "add-defaults" (tmp-list ...) alist (((quasiquote key)) keys ...)))
+    ((alist-values "add-defaults" tmp-list alist ((quote key) keys ...))
+     (alist-values "add-defaults" tmp-list alist (((quote key)) keys ...)))
+    ((alist-values "add-defaults" tmp-list alist ((quasiquote key) keys ...))
+     (alist-values "add-defaults" tmp-list alist (((quasiquote key)) keys ...)))
 
     ((alist-values "add-defaults" (tmp-list ...)                      alist ((key default equal?) keys ...))
      (alist-values "add-defaults" ((key default equal?) tmp-list ...) alist (keys ...)))
