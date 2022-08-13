@@ -1,7 +1,5 @@
 (import chicken.base)
 
-(import srfi-197)
-
 ;;; Returns the values corresponding to keys of an alist, with optional default
 ;;; values.
 ;;;
