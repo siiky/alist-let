@@ -1,4 +1,25 @@
-(import srfi-8)
+(import srfi-1 srfi-8)
+
+(define (alist-values/single-traverse al . keys)
+  (let* ((key-index
+           (let ((indices (map cons keys (iota (length keys)))))
+             (lambda (key)
+               (alist-ref key indices equal?))))
+         (vec (list->vector (map (constantly #f) keys)))
+         (wanted-key?
+           (lambda (k)
+             (and (member k keys)
+                  (not (vector-ref vec (key-index k)))))))
+
+    (for-each
+      (lambda (kv)
+        (let ((k (car kv))
+              (v (cdr kv)))
+          (when (wanted-key? k)
+            (vector-set! vec (key-index k) v))))
+      al)
+
+    (apply values (vector->list vec))))
 
 ;;; Returns the values corresponding to keys of an alist, with optional default
 ;;; values.
