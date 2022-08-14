@@ -1,25 +1,35 @@
 (import srfi-1 srfi-8)
 
-(define (alist-values/single-traverse al . keys)
-  (let* ((key-index
-           (let ((indices (map cons keys (iota (length keys)))))
-             (lambda (key)
-               (alist-ref key indices equal?))))
-         (vec (list->vector (map (constantly #f) keys)))
-         (wanted-key?
-           (lambda (k)
-             (and (member k keys)
-                  (not (vector-ref vec (key-index k)))))))
+(define (alist-delete-first key alist =?)
+  (cond
+    ((null? alist)
+     '())
+    ((=? key (caar alist))
+     (cdr alist))
+    (else
+      (cons (car alist)
+            (alist-delete-first key (cdr alist) =?)))))
 
-    (for-each
-      (lambda (kv)
-        (let ((k (car kv))
-              (v (cdr kv)))
-          (when (wanted-key? k)
-            (vector-set! vec (key-index k) v))))
-      al)
+(define (alist-values/single-traverse-int al key-indices vec)
+  (if (or (null? al) (null? key-indices))
+      (apply values (vector->list vec))
+      (let* ((key (caar al))
+             (val (cdar al))
+             (idx (alist-ref key key-indices equal?))
+             (al (cdr al)))
+        (if idx
+            (begin
+              (vector-set! vec idx val)
+              (alist-values/single-traverse-int al (alist-delete-first key key-indices equal?) vec))
+            (alist-values/single-traverse-int al key-indices vec)))))
 
-    (apply values (vector->list vec))))
+(define-syntax alist-values/single-traverse
+  (syntax-rules ()
+    ((alist-values/single-traverse al key ...)
+     (let* ((keys (list key ...))
+            (key-indices (map cons keys (iota (length keys))))
+            (vec (list->vector (map (constantly #f) keys))))
+       (alist-values/single-traverse-int al key-indices vec)))))
 
 ;;; Returns the values corresponding to keys of an alist, with optional default
 ;;; values.
