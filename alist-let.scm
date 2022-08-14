@@ -42,8 +42,8 @@
 ;;; ;=> (values "foo" 42)
 ;;;
 ;;; This macro expands in three phases:
-;;;  1. add-defaults => Traverses the keys list and adds the default value and
-;;;     equality test for the keys that don't have one.
+;;;  1. add-defaults => Traverses the keys list and adds the default value for
+;;;     the keys that don't have one.
 ;;;  2. reverse => The previous phase reverses the order of the keys in the
 ;;;     process, so it must be reversed again to give the correct final result.
 ;;;  3. result => Finally, after the inputs have been "normalized", we can
