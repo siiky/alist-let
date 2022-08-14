@@ -10,44 +10,35 @@
       (cons (car alist)
             (alist-delete-first key (cdr alist) =?)))))
 
-(define (alist-values/single-traverse-int al key-indices vec)
+(define (alist-values/single-traverse al key-indices vec =?)
   (if (or (null? al) (null? key-indices))
       (apply values (vector->list vec))
       (let* ((key (caar al))
              (val (cdar al))
-             (idx (alist-ref key key-indices equal?))
+             (idx (alist-ref key key-indices =?))
              (al (cdr al)))
         (if idx
             (begin
               (vector-set! vec idx val)
-              (alist-values/single-traverse-int al (alist-delete-first key key-indices equal?) vec))
-            (alist-values/single-traverse-int al key-indices vec)))))
-
-(define-syntax alist-values/single-traverse
-  (syntax-rules ()
-    ((alist-values/single-traverse al key ...)
-     (let* ((keys (list key ...))
-            (key-indices (map cons keys (iota (length keys))))
-            (vec (list->vector (map (constantly #f) keys))))
-       (alist-values/single-traverse-int al key-indices vec)))))
+              (alist-values/single-traverse al (alist-delete-first key key-indices =?) vec =?))
+            (alist-values/single-traverse al key-indices vec =?)))))
 
 ;;; Returns the values corresponding to keys of an alist, with optional default
 ;;; values.
 ;;;
-;;; (alist-values ALIST LVAR ...)
+;;; (alist-values =? ALIST LVAR ...)
 ;;;
 ;;; LVAR ::= KEY
 ;;;        | (KEY)
 ;;;        | (KEY DEFAULT)
-;;;        | (KEY DEFAULT =?)
 ;;;
-;;; (alist-values '((foo . "foo") (bar . "bar") (zaz . "zaz")) 'foo 'zaz)
+;;; (alist-values eq? '((foo . "foo") (bar . "bar") (zaz . "zaz")) 'foo 'zaz)
 ;;; ;=> (values "foo" "zaz")
 ;;;
-;;; (alist-values '((foo . "foo") (bar . "bar") (zaz . "zaz")) 'foo 'nop)
+;;; (alist-values eq? '((foo . "foo") (bar . "bar") (zaz . "zaz")) 'foo 'nop)
 ;;; ;=> (values "foo" #f)
 ;;;
-;;; (alist-values '((foo . "foo") (bar . "bar") (zaz . "zaz")) 'foo ('nop 42))
+;;; (alist-values eq? '((foo . "foo") (bar . "bar") (zaz . "zaz")) 'foo ('nop 42))
 ;;; ;=> (values "foo" 42)
 ;;;
 ;;; This macro expands in three phases:
@@ -61,62 +52,58 @@
   (syntax-rules (quote quasiquote)
     ; All inputs have a default value and equality test now, so they have to be
     ; reversed.
-    ((alist-values "add-defaults" tmp-list alist ())
-     (alist-values "reverse" tmp-list alist ()))
+    ((alist-values "add-defaults" tmp-list =? alist ())
+     (alist-values "reverse" tmp-list =? alist ()))
 
     ; Expressions like 'abc and `abc are matched as (quote abc) and (quasiquote abc)
-    ((alist-values "add-defaults" tmp-list alist ((quote key) keys ...))
-     (alist-values "add-defaults" tmp-list alist (((quote key)) keys ...)))
-    ((alist-values "add-defaults" tmp-list alist ((quasiquote key) keys ...))
-     (alist-values "add-defaults" tmp-list alist (((quasiquote key)) keys ...)))
+    ((alist-values "add-defaults" tmp-list =? alist ((quote key) keys ...))
+     (alist-values "add-defaults" tmp-list =? alist (((quote key)) keys ...)))
+    ((alist-values "add-defaults" tmp-list =? alist ((quasiquote key) keys ...))
+     (alist-values "add-defaults" tmp-list =? alist (((quasiquote key)) keys ...)))
 
     ; This key has an explicit default value and equality test, just move it to
     ; the tmp-list.
-    ((alist-values "add-defaults" (tmp-list ...)                      alist ((key default equal?) keys ...))
-     (alist-values "add-defaults" ((key default equal?) tmp-list ...) alist (keys ...)))
-
-    ; This key has an explicit default value but no equality test, use `equal?`.
-    ((alist-values "add-defaults" tmp-list alist ((key default) keys ...))
-     (alist-values "add-defaults" tmp-list alist ((key default equal?) keys ...)))
+    ((alist-values "add-defaults" (tmp-list ...)               =? alist ((key default) keys ...))
+     (alist-values "add-defaults" ((key default) tmp-list ...) =? alist (keys ...)))
 
     ; Add a default value of #f if there's no explicit one.
-    ((alist-values "add-defaults" tmp-list alist ((key) keys ...))
-     (alist-values "add-defaults" tmp-list alist ((key #f) keys ...)))
+    ((alist-values "add-defaults" tmp-list =? alist ((key) keys ...))
+     (alist-values "add-defaults" tmp-list =? alist ((key #f) keys ...)))
 
     ; This clause is still necessary because alist-values may be used by
     ; itself without alist-let.
-    ((alist-values "add-defaults" tmp-list alist (key keys ...))
-     (alist-values "add-defaults" tmp-list alist ((key #f) keys ...)))
+    ((alist-values "add-defaults" tmp-list =? alist (key keys ...))
+     (alist-values "add-defaults" tmp-list =? alist ((key #f) keys ...)))
 
 
-    ((alist-values "reverse" () alist keys)
-     (alist-values "result" alist keys))
+    ((alist-values "reverse" () =? alist keys)
+     (alist-values "result" =? alist keys))
 
-    ((alist-values "reverse" (key tmp-list ...) alist (keys ...))
-     (alist-values "reverse" (tmp-list ...)     alist (key keys ...)))
-
-
-    ((alist-values "result" alist ((key default equal?) ...))
-     (let ((%alist alist))
-       ; TODO: How to implement this with better performance?
-       (values (alist-ref key %alist equal? default) ...)))
+    ((alist-values "reverse" (key tmp-list ...) =? alist (keys ...))
+     (alist-values "reverse" (tmp-list ...)     =? alist (key keys ...)))
 
 
-    ((alist-values alist key ...)
-     (alist-values "add-defaults" () alist (key ...)))))
+    ((alist-values "result" =? alist ((key default) ...))
+     (let* ((keys (list key ...))
+            (key-indices (map cons keys (iota (length keys))))
+            (vec (list->vector (list default ...))))
+       (alist-values/single-traverse alist key-indices vec =?)))
+
+
+    ((alist-values =? alist key ...)
+     (alist-values "add-defaults" () =? alist (key ...)))))
 
 
 ;;;
-;;; (alist-let ALIST (LVAR ...)
+;;; (alist-let =? ALIST (LVAR ...)
 ;;;   BODY ...)
 ;;;
 ;;; LVAR ::= (VAR KEY)
 ;;;        | (VAR KEY DEFAULT)
-;;;        | (VAR KEY DEFAULT =?)
 ;;;
 (define-syntax alist-let
   (syntax-rules ()
-    ((alist-let alist ((var key opts ...) ...)
+    ((alist-let =? alist ((var key opts ...) ...)
        body ...)
-     (receive (var ...) (alist-values alist (key opts ...) ...)
+     (receive (var ...) (alist-values =? alist (key opts ...) ...)
        body ...))))
